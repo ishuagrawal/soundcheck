@@ -1,0 +1,40 @@
+name: Soundcheck
+options:
+  bundleIdPrefix: com.ishu
+  deploymentTarget:
+    macOS: '26.0'
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    ARCHS: arm64
+    ONLY_ACTIVE_ARCH: YES
+    MACOSX_DEPLOYMENT_TARGET: '26.0'
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: '-'
+    ENABLE_HARDENED_RUNTIME: YES
+    ENABLE_APP_SANDBOX: NO
+    CLANG_WARN_DOCUMENTATION_COMMENTS: YES
+targets:
+  Soundcheck:
+    type: application
+    platform: macOS
+    sources: [Soundcheck]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ishu.Soundcheck
+        INFOPLIST_FILE: Soundcheck/Resources/Info.plist
+        SWIFT_OBJC_BRIDGING_HEADER: Soundcheck/Audio/Soundcheck-Bridging-Header.h
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    scheme:
+      testTargets: [SoundcheckTests]
+  SoundcheckTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [SoundcheckTests]
+    dependencies:
+      - target: Soundcheck
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ishu.SoundcheckTests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_OBJC_BRIDGING_HEADER: Soundcheck/Audio/Soundcheck-Bridging-Header.h
