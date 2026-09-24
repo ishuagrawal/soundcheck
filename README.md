@@ -21,14 +21,11 @@ Soundcheck gives every app on your Mac its own volume. Keep your music up while 
 
 1. Download [Soundcheck.dmg](https://github.com/ishuagrawal/soundcheck/releases/latest/download/Soundcheck.dmg) from the [latest release](https://github.com/ishuagrawal/soundcheck/releases/latest).
 2. Open the disk image, then drag **Soundcheck** to the **Applications** folder.
-3. Open Soundcheck from your Applications folder.
+3. Open Soundcheck from your Applications folder. Because you downloaded it from the internet, macOS asks you to confirm the first time. Click **Open**.
 
-   Soundcheck isn't notarized by Apple, so the first time you open it, macOS says it can't verify the app. Click **Done**, then continue with the next step.
-4. Choose Apple menu > System Settings, then click **Privacy & Security** in the sidebar. Scroll down to Security, then click **Open Anyway** next to the message about Soundcheck. If asked, enter your password, then click **Open Anyway** again.
+The Soundcheck icon, three small sliders, appears in the menu bar. You can eject the disk image.
 
-The Soundcheck icon, three small sliders, appears in the menu bar. You can eject the disk image. You only need to do steps 3 and 4 once.
-
-To update Soundcheck, quit it, then install the new version the same way. Your settings are kept.
+To update Soundcheck, quit it, then install the new version the same way. Your settings and audio permission are kept.
 
 ## Set up Soundcheck
 
@@ -92,9 +89,7 @@ Click the More button (**…**), then choose **Quit Soundcheck**. When you quit,
 
 **An app's volume doesn't change, or it shows a warning symbol.** Make sure Soundcheck has permission to access audio. Click the More button (**…**), choose **Audio Access**, then make sure Soundcheck is turned on. Then quit Soundcheck and open it again.
 
-**macOS asks for audio access again.** Soundcheck isn't signed with a Developer ID, so macOS can ask again after you update or rebuild the app. Click **Allow**.
-
-**macOS says Soundcheck can't be opened or can't be verified.** Choose Apple menu > System Settings, then click **Privacy & Security** in the sidebar. Scroll down to Security, then click **Open Anyway** next to the message about Soundcheck. Download Soundcheck only from this repository's releases.
+**macOS asks for audio access again.** This can happen if you build Soundcheck yourself, because each local build is signed differently. Click **Allow**. Releases from this repository keep their permission across updates.
 
 ## Uninstall Soundcheck
 
@@ -158,8 +153,10 @@ To publish a new version:
 3. Create a GitHub release and attach `build/Soundcheck.dmg`. Keep the file name, so the download link in this README always gets the latest version:
 
    ```sh
-   gh release create v1.0 build/Soundcheck.dmg --title "Soundcheck 1.0"
+   gh release create v1.1 build/Soundcheck.dmg --title "Soundcheck 1.1"
    ```
+
+   To replace the disk image on an existing release, use `gh release upload v1.0 build/Soundcheck.dmg --clobber`.
 
 ### How it works
 

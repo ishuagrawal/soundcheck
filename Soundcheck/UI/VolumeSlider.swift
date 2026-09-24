@@ -52,9 +52,11 @@ struct VolumeSlider: NSViewRepresentable {
     }
 }
 
-/// The knob is as wide as the track is tall and never drawn: the fill simply
-/// ends at the knob's trailing edge, so the tracking math and the visible edge
-/// agree, and zero volume leaves a small circle, as in Control Center.
+/// The fill is proportional: its trailing edge sits at the value's fraction of the
+/// track, so 0% is empty and 50% is half. The fill is a capsule that starts one
+/// track height before the leading edge, clipped to the track, so small values
+/// tuck into the rounded end instead of drawing a circle. The knob has no width,
+/// so tracking maps the pointer across the full track and stays on the fill edge.
 private final class CapsuleSliderCell: NSSliderCell {
     var tint: NSColor = .controlAccentColor
     var isMuted = false
@@ -64,7 +66,7 @@ private final class CapsuleSliderCell: NSSliderCell {
         controlView?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
     }
 
-    override var knobThickness: CGFloat { bounds.height }
+    override var knobThickness: CGFloat { 0 }
     override func barRect(flipped: Bool) -> NSRect { bounds }
 
     override func drawBar(inside rect: NSRect, flipped: Bool) {
@@ -78,12 +80,16 @@ private final class CapsuleSliderCell: NSSliderCell {
             let edge = NSBezierPath(roundedRect: track.insetBy(dx: 0.5, dy: 0.5), xRadius: radius - 0.5, yRadius: radius - 0.5)
             edge.lineWidth = 1; edge.stroke()
         }
-        let fraction = CGFloat((doubleValue - minValue) / max(0.001, maxValue - minValue))
-        let fill = NSRect(x: track.minX, y: track.minY,
-                          width: track.height + (track.width - track.height) * min(1, max(0, fraction)), height: track.height)
+        let fraction = min(1, max(0, CGFloat((doubleValue - minValue) / max(0.001, maxValue - minValue))))
+        let edge = track.minX + track.width * fraction
+        guard edge > track.minX else { return }
+        let fill = NSRect(x: track.minX - track.height, y: track.minY, width: edge - track.minX + track.height, height: track.height)
         let alpha: CGFloat = !isEnabled ? 0.14 : (isMuted ? 0.12 : (isDark ? 0.46 : 0.3))
+        NSGraphicsContext.saveGraphicsState()
+        NSBezierPath(roundedRect: track, xRadius: radius, yRadius: radius).addClip()
         tint.withAlphaComponent(alpha).setFill()
         NSBezierPath(roundedRect: fill, xRadius: radius, yRadius: radius).fill()
+        NSGraphicsContext.restoreGraphicsState()
     }
 
     override func drawKnob(_ knobRect: NSRect) {}

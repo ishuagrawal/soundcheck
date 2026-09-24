@@ -29,10 +29,13 @@ fi
 
 xcodebuild -project Soundcheck.xcodeproj -scheme Soundcheck -configuration Release -derivedDataPath "$build_dir" \
   -destination 'platform=macOS,arch=arm64' ARCHS=arm64 CODE_SIGN_IDENTITY=- build
-mkdir -p build
-rm -rf build/Soundcheck.app build/Soundcheck.dmg
-ditto --norsrc --noextattr "$build_dir/Build/Products/Release/Soundcheck.app" build/Soundcheck.app
-app=build/Soundcheck.app
+# Sign and package outside the repository: iCloud-synced folders add Finder
+# metadata that code signing rejects. Results are copied into build/ at the end.
+work="$build_dir/dist"
+rm -rf "$work" && mkdir -p "$work"
+ditto --norsrc --noextattr "$build_dir/Build/Products/Release/Soundcheck.app" "$work/Soundcheck.app"
+app="$work/Soundcheck.app"
+dmg="$work/Soundcheck.dmg"
 [[ "$(xcrun lipo -archs "$app/Contents/MacOS/Soundcheck")" == "arm64" ]]
 
 # Notarization requires the hardened runtime and a secure timestamp.
@@ -48,9 +51,9 @@ notarize() {
 
 if [[ "$identity" != "-" ]]; then
   # Notarize and staple the app itself, so it opens offline once copied out of the disk image.
-  ditto -c -k --keepParent "$app" build/Soundcheck-notarize.zip
-  notarize build/Soundcheck-notarize.zip
-  rm build/Soundcheck-notarize.zip
+  ditto -c -k --keepParent "$app" "$work/Soundcheck-notarize.zip"
+  notarize "$work/Soundcheck-notarize.zip"
+  rm "$work/Soundcheck-notarize.zip"
   xcrun stapler staple "$app"
 fi
 
@@ -59,17 +62,21 @@ staging="$(mktemp -d)"
 trap 'rm -rf "$staging"' EXIT
 ditto --norsrc --noextattr "$app" "$staging/Soundcheck.app"
 ln -s /Applications "$staging/Applications"
-hdiutil create -quiet -volname Soundcheck -srcfolder "$staging" -ov -format UDZO build/Soundcheck.dmg
-hdiutil verify -quiet build/Soundcheck.dmg
+hdiutil create -quiet -volname Soundcheck -srcfolder "$staging" -ov -format UDZO "$dmg"
+hdiutil verify -quiet "$dmg"
 
 if [[ "$identity" != "-" ]]; then
-  codesign --timestamp --sign "$identity" build/Soundcheck.dmg
-  notarize build/Soundcheck.dmg
-  xcrun stapler staple build/Soundcheck.dmg
+  codesign --timestamp --sign "$identity" "$dmg"
+  notarize "$dmg"
+  xcrun stapler staple "$dmg"
   spctl --assess --type execute --verbose=2 "$app"
-  spctl --assess --type open --context context:primary-signature --verbose=2 build/Soundcheck.dmg
+  spctl --assess --type open --context context:primary-signature --verbose=2 "$dmg"
 fi
 
-echo "Built: $PWD/$app"
+mkdir -p build
+rm -rf build/Soundcheck.app build/Soundcheck.dmg
+ditto --norsrc --noextattr "$app" build/Soundcheck.app
+cp "$dmg" build/Soundcheck.dmg
+echo "Built: $PWD/build/Soundcheck.app"
 echo "Disk image: $PWD/build/Soundcheck.dmg"
 if [[ "$mode" == "run" ]]; then open "$app"; fi

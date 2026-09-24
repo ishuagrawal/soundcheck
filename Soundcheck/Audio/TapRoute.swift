@@ -17,10 +17,13 @@ final class TapRoute {
     private var render: OpaquePointer?
     private var description: CATapDescription?
 
-    init(key: String, appID: String, device: AudioObjectID, stream: Int, processes: [AudioObjectID], bundleIDs: [String], gain: Float) throws {
+    /// `muteOnly` is for an explicitly muted app, not a volume of 0: a slider dragged
+    /// through 0 keeps its playback route, so it never has to be rebuilt mid-drag.
+    init(key: String, appID: String, device: AudioObjectID, stream: Int, processes: [AudioObjectID], bundleIDs: [String],
+         gain: Float, muteOnly: Bool) throws {
         self.key = key; self.appID = appID; deviceID = device; streamIndex = stream; processIDs = processes
         self.bundleIDs = bundleIDs
-        isMuteOnly = gain == 0
+        isMuteOnly = muteOnly
         do { try start(gain: gain) } catch { stop(); throw error }
     }
     deinit { stop() }

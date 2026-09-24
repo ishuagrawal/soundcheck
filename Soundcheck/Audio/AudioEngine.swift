@@ -58,16 +58,28 @@ final class AudioEngine: @unchecked Sendable {
                     for stream in formats.indices {
                         let key = "\(app.id)|\(uid)|\(stream)"
                         wanted.insert(key)
-                        if let route = routes[key], route.sampleRate != formats[stream].mSampleRate || route.fault != 0 || route.isMuteOnly != (app.preference.gain == 0) {
-                            routes.removeValue(forKey: key)
+                        let muteOnly = app.preference.isMuted
+                        // A route that no longer fits is replaced make-before-break: the old tap
+                        // keeps the app's native audio muted until the new one is running.
+                        // Destroying it first let the app play at full volume for the gap.
+                        var replaced: TapRoute?
+                        if let route = routes[key], route.sampleRate != formats[stream].mSampleRate || route.fault != 0 || route.isMuteOnly != muteOnly {
+                            replaced = routes.removeValue(forKey: key)
                         }
                         if let route = routes[key] {
                             try route.update(processes: processes, bundleIDs: app.matchingBundleIDs, gain: app.preference.gain)
                         } else {
-                            if let retry = failedUntil[key], retry > Date() { continue }
+                            if let retry = failedUntil[key], retry > Date() {
+                                // Keep the old route until a retry is due rather than unmute the app.
+                                if let replaced { routes[key] = replaced }
+                                continue
+                            }
                             do {
-                                routes[key] = try TapRoute(key: key, appID: app.id, device: device, stream: stream,
-                                                          processes: processes, bundleIDs: app.matchingBundleIDs, gain: app.preference.gain)
+                                try withExtendedLifetime(replaced) {
+                                    routes[key] = try TapRoute(key: key, appID: app.id, device: device, stream: stream,
+                                                              processes: processes, bundleIDs: app.matchingBundleIDs,
+                                                              gain: app.preference.gain, muteOnly: muteOnly)
+                                }
                                 failedUntil.removeValue(forKey: key)
                             } catch {
                                 failedUntil[key] = Date().addingTimeInterval(4)

@@ -391,16 +391,22 @@ private struct LevelGlow: View {
     var body: some View {
         GeometryReader { proxy in
             let height = proxy.size.height
-            let fill = height + (proxy.size.width - height) * min(1, max(0, volume))
+            let fill = proxy.size.width * min(1, max(0, volume))
             let ink = colorScheme == .dark ? tint.mix(with: .white, by: 0.45) : tint.mix(with: .white, by: 0.2)
             let glow = min(fill, max(height * 2.2, fill * 0.55))
-            Capsule()
+            Rectangle()
                 .fill(LinearGradient(stops: [
                     .init(color: ink.opacity(0), location: 0),
                     .init(color: ink.opacity(colorScheme == .dark ? 0.55 : 0.5), location: 1)
                 ], startPoint: .leading, endPoint: .trailing))
                 .frame(width: glow, height: height)
                 .offset(x: fill - glow)
+                .frame(width: proxy.size.width, height: height, alignment: .leading)
+                // The slider fill's shape: a capsule ending at the fill edge, clipped to the track.
+                .mask(alignment: .leading) {
+                    Capsule().frame(width: fill + height, height: height).offset(x: -height)
+                }
+                .clipShape(Capsule())
                 .opacity(Double(min(1, level * 1.35)))
         }
         .animation(reduceMotion ? nil : .smooth(duration: 0.18), value: level)
