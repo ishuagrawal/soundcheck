@@ -58,12 +58,17 @@ final class AudioEngine: @unchecked Sendable {
                     for stream in formats.indices {
                         let key = "\(app.id)|\(uid)|\(stream)"
                         wanted.insert(key)
-                        let muteOnly = app.preference.isMuted
+                        // Muting a running app sets its playback route's gain to 0 and unmuting
+                        // restores it, both through the 5 ms ramp. Swapping route types on every
+                        // toggle added a second tap to a playing app, which let a burst of its
+                        // native audio through. A mute-only route is created only for a muted
+                        // app that isn't running, and replaced only once it must play again.
+                        let muteOnly = app.preference.isMuted && app.sources.isEmpty
                         // A route that no longer fits is replaced make-before-break: the old tap
                         // keeps the app's native audio muted until the new one is running.
-                        // Destroying it first let the app play at full volume for the gap.
                         var replaced: TapRoute?
-                        if let route = routes[key], route.sampleRate != formats[stream].mSampleRate || route.fault != 0 || route.isMuteOnly != muteOnly {
+                        if let route = routes[key], route.sampleRate != formats[stream].mSampleRate || route.fault != 0
+                            || (route.isMuteOnly && !app.preference.isMuted) {
                             replaced = routes.removeValue(forKey: key)
                         }
                         if let route = routes[key] {

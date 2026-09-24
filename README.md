@@ -162,7 +162,7 @@ To publish a new version:
 
 ### How it works
 
-Soundcheck finds apps through public Core Audio process objects and `NSWorkspace`. Each app you adjust gets a private process tap and aggregate device for each output device and stream. A muted app uses a tap-only reader, so no silent audio plays through the hardware. Taps use `mutedWhenTapped`: Core Audio silences the original only while the reader runs. A small C callback copies Float32 audio with an atomic gain target and a 5 ms ramp; it doesn't allocate memory, take locks, or call Swift on the audio thread.
+Soundcheck finds apps through public Core Audio process objects and `NSWorkspace`. Each app you adjust gets a private process tap and aggregate device for each output device and stream. Muting a running app sets its gain to 0 on its existing route, so mute and unmute are smooth fades; a muted app that isn't running gets a tap-only reader, so it stays muted when it opens without a silent hardware stream. Taps use `mutedWhenTapped`: Core Audio silences the original only while the reader runs. A small C callback copies Float32 audio with an atomic gain target and a 5 ms ramp; it doesn't allocate memory, take locks, or call Swift on the audio thread.
 
 An app at 100 percent keeps its original output path. While the panel is open, metering taps collect peak levels for the level bars; they close when the panel closes. Pausing, resetting, a startup failure, or quitting removes the affected routes. No kernel extension, audio driver, private privacy API, or third-party package is installed.
 

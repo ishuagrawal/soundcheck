@@ -17,8 +17,9 @@ final class TapRoute {
     private var render: OpaquePointer?
     private var description: CATapDescription?
 
-    /// `muteOnly` is for an explicitly muted app, not a volume of 0: a slider dragged
-    /// through 0 keeps its playback route, so it never has to be rebuilt mid-drag.
+    /// `muteOnly` is for a muted app that isn't running: a tap-only reader keeps it
+    /// muted when it launches without opening a silent hardware stream. Running apps,
+    /// muted or at 0%, use a playback route with gain 0, so toggles never rebuild it.
     init(key: String, appID: String, device: AudioObjectID, stream: Int, processes: [AudioObjectID], bundleIDs: [String],
          gain: Float, muteOnly: Bool) throws {
         self.key = key; self.appID = appID; deviceID = device; streamIndex = stream; processIDs = processes
