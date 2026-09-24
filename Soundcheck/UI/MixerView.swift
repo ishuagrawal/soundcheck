@@ -82,7 +82,7 @@ struct MixerView: View {
             Toggle("Launch at Login", isOn: Binding(get: { model.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
             Button("Audio Access…", systemImage: "lock.shield") { model.openAudioPrivacy() }
             Divider()
-            Text("Soundcheck 1.1")
+            Text("Soundcheck \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")")
             Button("Quit Soundcheck", systemImage: "power") { NSApplication.shared.terminate(nil) }
                 .keyboardShortcut("q")
         } label: {

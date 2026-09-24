@@ -149,7 +149,7 @@ Builds are signed ad hoc, not with a Developer ID, so people who download Soundc
 3. Create a GitHub release and attach `build/Soundcheck.dmg`. Keep the file name, so the download link in this README always gets the latest version:
 
    ```sh
-   gh release create v1.1 build/Soundcheck.dmg --title "Soundcheck 1.1"
+   gh release create v1.0 build/Soundcheck.dmg --title "Soundcheck 1.0"
    ```
 
 To let people open Soundcheck without the Privacy & Security step, sign it with a Developer ID certificate and notarize it.
