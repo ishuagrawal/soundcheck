@@ -142,17 +142,24 @@ Builds target arm64 only; the build script checks that the app contains no Intel
 
 ### Publish a release
 
-Builds are signed ad hoc, not with a Developer ID, so people who download Soundcheck confirm it in Privacy & Security the first time they open it. To publish a new version:
+Releases are signed with a Developer ID certificate, notarized by Apple, and stapled, so Soundcheck opens without a security warning. `./scripts/build.sh release` does all of this, and needs two things set up once:
+
+1. A **Developer ID Application** certificate in your keychain. In Xcode, choose Xcode > Settings, click **Accounts**, select your team, click **Manage Certificates**, click the Add button (**+**), then choose **Developer ID Application**. Only the team's Account Holder can create this certificate.
+2. Notary credentials saved in your keychain. Create an [app-specific password](https://support.apple.com/102654) for your Apple Account, then enter this in Terminal and follow the prompts:
+
+   ```sh
+   xcrun notarytool store-credentials soundcheck-notary --apple-id YOUR_APPLE_ID --team-id YOUR_TEAM_ID
+   ```
+
+To publish a new version:
 
 1. Update `CFBundleShortVersionString` and `CFBundleVersion` in `Soundcheck/Resources/Info.plist`.
-2. Run `./scripts/build.sh`.
+2. Run `./scripts/build.sh release`. It signs the app with the hardened runtime, notarizes and staples the app and the disk image, and checks both with Gatekeeper.
 3. Create a GitHub release and attach `build/Soundcheck.dmg`. Keep the file name, so the download link in this README always gets the latest version:
 
    ```sh
    gh release create v1.0 build/Soundcheck.dmg --title "Soundcheck 1.0"
    ```
-
-To let people open Soundcheck without the Privacy & Security step, sign it with a Developer ID certificate and notarize it.
 
 ### How it works
 
