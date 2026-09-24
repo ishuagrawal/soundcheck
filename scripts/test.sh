@@ -1,7 +1,6 @@
 #!/bin/zsh
 set -euo pipefail
 cd "${0:A:h:h}"
-xcodegen generate
 mkdir -p build/tests
 xcrun clang -std=c11 -Wall -Wextra -Wno-unused-parameter -fsanitize=address,undefined -g \
   scripts/test-render.c Soundcheck/Audio/RenderKernel.c -framework CoreAudio -o build/tests/test-render

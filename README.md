@@ -16,36 +16,19 @@ Soundcheck gives every app on your Mac its own volume. Keep your music up while 
 
 - A Mac with Apple silicon
 - macOS Tahoe 26 or later
-- To build Soundcheck: Xcode 26 or later and [XcodeGen](https://github.com/yonaskolb/XcodeGen)
 
 ## Install Soundcheck
 
-Soundcheck isn't available on the App Store, so you build it from this repository.
+1. Download [Soundcheck.dmg](https://github.com/ishuagrawal/soundcheck/releases/latest/download/Soundcheck.dmg) from the [latest release](https://github.com/ishuagrawal/soundcheck/releases/latest).
+2. Open the disk image, then drag **Soundcheck** to the **Applications** folder.
+3. Open Soundcheck from your Applications folder.
 
-1. Install Xcode from the App Store, then open it once so it can finish installing its components.
-2. Install XcodeGen. If you use [Homebrew](https://brew.sh), open Terminal and enter:
+   Soundcheck isn't notarized by Apple, so the first time you open it, macOS says it can't verify the app. Click **Done**, then continue with the next step.
+4. Choose Apple menu > System Settings, then click **Privacy & Security** in the sidebar. Scroll down to Security, then click **Open Anyway** next to the message about Soundcheck. If asked, enter your password, then click **Open Anyway** again.
 
-   ```sh
-   brew install xcodegen
-   ```
+The Soundcheck icon, three small sliders, appears in the menu bar. You can eject the disk image. You only need to do steps 3 and 4 once.
 
-3. Get the code. In Terminal, enter:
-
-   ```sh
-   git clone https://github.com/ishuagrawal/soundcheck.git
-   cd soundcheck
-   ```
-
-   You can also click **Code** > **Download ZIP** on this page, unzip the file, then go to its folder in Terminal.
-4. Build the app:
-
-   ```sh
-   ./scripts/build.sh
-   ```
-
-   When the build finishes, Terminal shows the location of `Soundcheck.app`, in the `build` folder.
-5. In the Finder, drag **Soundcheck** from the `build` folder to your Applications folder.
-6. Open Soundcheck from your Applications folder. The Soundcheck icon, three small sliders, appears in the menu bar.
+To update Soundcheck, quit it, then install the new version the same way. Your settings are kept.
 
 ## Set up Soundcheck
 
@@ -109,9 +92,9 @@ Click the More button (**…**), then choose **Quit Soundcheck**. When you quit,
 
 **An app's volume doesn't change, or it shows a warning symbol.** Make sure Soundcheck has permission to access audio. Click the More button (**…**), choose **Audio Access**, then make sure Soundcheck is turned on. Then quit Soundcheck and open it again.
 
-**macOS asks for audio access again.** Each build of Soundcheck is signed on your Mac, so rebuilding or moving the app can make macOS ask again. Click **Allow**.
+**macOS asks for audio access again.** Soundcheck isn't signed with a Developer ID, so macOS can ask again after you update or rebuild the app. Click **Allow**.
 
-**macOS says Soundcheck can't be opened.** This can happen if someone sent you Soundcheck as a ZIP file instead of you building it. Choose Apple menu > System Settings, then click **Privacy & Security** in the sidebar. Scroll down, then click **Open Anyway** next to the message about Soundcheck. Open Soundcheck only if you trust the person who sent it.
+**macOS says Soundcheck can't be opened or can't be verified.** Choose Apple menu > System Settings, then click **Privacy & Security** in the sidebar. Scroll down to Security, then click **Open Anyway** next to the message about Soundcheck. Download Soundcheck only from this repository's releases.
 
 ## Uninstall Soundcheck
 
@@ -134,10 +117,11 @@ Click the More button (**…**), then choose **Quit Soundcheck**. When you quit,
 
 ## Development
 
-### Set up the repository
+### Build from source
 
-1. Install Xcode 26 or later and XcodeGen, as described in [Install Soundcheck](#install-soundcheck).
-2. Clone the repository and run the tests:
+Building Soundcheck requires Xcode 26 or later.
+
+1. Clone the repository and run the tests:
 
    ```sh
    git clone https://github.com/ishuagrawal/soundcheck.git
@@ -145,26 +129,30 @@ Click the More button (**…**), then choose **Quit Soundcheck**. When you quit,
    ./scripts/test.sh
    ```
 
-3. To work in Xcode, generate the project, then open it:
+2. Build the app and its disk image:
 
    ```sh
-   xcodegen generate
-   open Soundcheck.xcodeproj
+   ./scripts/build.sh       # Release build: build/Soundcheck.app and build/Soundcheck.dmg
+   ./scripts/build.sh run   # Build, then open the app
    ```
 
-   Edit `project.yml`, not the generated project, to change targets or build settings, then run `xcodegen generate` again.
+To work in Xcode, open `Soundcheck.xcodeproj`.
 
-### Build and test
+Builds target arm64 only; the build script checks that the app contains no Intel code. Derived data goes to `/tmp/soundcheck-derived`, because iCloud-synced folders can add Finder metadata that breaks code signing. Set `SOUNDCHECK_BUILD_DIR` to use another location.
 
-```sh
-./scripts/build.sh       # Release build, plus build/Soundcheck.zip
-./scripts/build.sh run   # Build, then open the app
-./scripts/test.sh        # Audio kernel sanitizer tests and unit tests
-```
+### Publish a release
 
-Builds target arm64 only; the build script checks that the app contains no Intel code. `project.yml` is the source of truth for the Xcode project. `Soundcheck.xcodeproj` isn't committed: the scripts generate it, or run `xcodegen generate` to open it in Xcode. Derived data goes to `/tmp/soundcheck-derived`, because iCloud-synced folders can add Finder metadata that breaks code signing. Set `SOUNDCHECK_BUILD_DIR` to use another location.
+Builds are signed ad hoc, not with a Developer ID, so people who download Soundcheck confirm it in Privacy & Security the first time they open it. To publish a new version:
 
-Builds are signed locally. To distribute Soundcheck, sign it with your own Developer ID and notarize it.
+1. Update `CFBundleShortVersionString` and `CFBundleVersion` in `Soundcheck/Resources/Info.plist`.
+2. Run `./scripts/build.sh`.
+3. Create a GitHub release and attach `build/Soundcheck.dmg`. Keep the file name, so the download link in this README always gets the latest version:
+
+   ```sh
+   gh release create v1.1 build/Soundcheck.dmg --title "Soundcheck 1.1"
+   ```
+
+To let people open Soundcheck without the Privacy & Security step, sign it with a Developer ID certificate and notarize it.
 
 ### How it works
 
@@ -182,7 +170,6 @@ Settings and each app's known helper bundle identifiers are stored locally. Bund
 - To regenerate the image at the top of this page, render the panel, then composite it:
 
   ```sh
-  xcodegen generate
   mkdir -p /tmp/soundcheck-snapshots
   TEST_RUNNER_SOUNDCHECK_SNAPSHOT_DIR=/tmp/soundcheck-snapshots xcodebuild -project Soundcheck.xcodeproj -scheme Soundcheck \
     -destination 'platform=macOS,arch=arm64' test -only-testing:SoundcheckTests/PanelSnapshotTests
