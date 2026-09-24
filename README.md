@@ -49,6 +49,8 @@ Drag the app's slider. At 100 percent, an app plays at its own volume; lower set
 
 Click the app's icon to the left of its slider. A muted app shows a red badge, and its slider stays dimmed at its saved level. To unmute, click the icon again or drag the slider.
 
+An app you drag to 0% also shows the red badge. Clicking its icon then sets it to 50%.
+
 You can also Control-click an app's slider and choose **Mute** or **Unmute**.
 
 ### Reset an app to its own volume

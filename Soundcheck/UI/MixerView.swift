@@ -290,9 +290,12 @@ private struct AppVolumeRow: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var muted: Bool { app.preference.isMuted }
+    /// Muted or dragged to 0%: the row shows the muted look either way (dimmed icon,
+    /// badge, name, and slider; no glow or level bars). The value still reads 0%.
+    private var silent: Bool { app.preference.isSilent }
     @Environment(\.colorScheme) private var colorScheme
     private var ink: Color { colorScheme == .dark ? app.accent.mix(with: .white, by: 0.55) : app.accent.mix(with: .black, by: 0.25) }
-    private var glowing: Bool { !muted && !model.isBypassed && model.isPanelVisible && app.error == nil }
+    private var glowing: Bool { !silent && !model.isBypassed && model.isPanelVisible && app.error == nil }
     private var detail: String? {
         if let error = app.error { return error }
         if model.audioConnectionStalled { return "Waiting for audio" }
@@ -304,7 +307,7 @@ private struct AppVolumeRow: View {
         HStack(spacing: 10) {
             muteButton
             VolumeSlider(value: Binding(get: { app.preference.volume }, set: { model.setVolume($0, for: app) }),
-                         tint: app.accent, label: "\(app.name) volume", muted: muted)
+                         tint: app.accent, label: "\(app.name) volume", muted: silent)
                 .overlay {
                     ZStack {
                         LevelGlow(level: glowing ? app.activity.level : 0, volume: app.preference.volume, tint: app.accent)
@@ -317,7 +320,7 @@ private struct AppVolumeRow: View {
         .opacity(model.isBypassed ? 0.55 : 1)
         .help(detail ?? "")
         .contextMenu {
-            Button(muted ? "Unmute" : "Mute", systemImage: muted ? "speaker.wave.2" : "speaker.slash") { model.toggleMute(app) }
+            Button(silent ? "Unmute" : "Mute", systemImage: silent ? "speaker.wave.2" : "speaker.slash") { model.toggleMute(app) }
             Button("Reset to 100%", systemImage: "arrow.counterclockwise") { model.reset(app) }
                 .disabled(!app.preference.needsProcessing)
             if let error = app.error { Divider(); Text(error) }
@@ -328,14 +331,14 @@ private struct AppVolumeRow: View {
         Button { model.toggleMute(app) } label: {
             Image(nsImage: app.icon).resizable().interpolation(.high)
                 .frame(width: 28, height: 28)
-                .saturation(muted ? 0 : 1).opacity(muted ? 0.55 : 1)
+                .saturation(silent ? 0 : 1).opacity(silent ? 0.55 : 1)
                 .overlay(alignment: .bottomTrailing) {
-                    if muted || hoveringIcon {
-                        Image(systemName: muted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                    if silent || hoveringIcon {
+                        Image(systemName: silent ? "speaker.slash.fill" : "speaker.wave.2.fill")
                             .font(.system(size: 7, weight: .bold))
-                            .foregroundStyle(muted ? Color.white : Color.primary)
+                            .foregroundStyle(silent ? Color.white : Color.primary)
                             .frame(width: 15, height: 15)
-                            .background(muted ? AnyShapeStyle(Color.red.opacity(0.85)) : AnyShapeStyle(.regularMaterial), in: .circle)
+                            .background(silent ? AnyShapeStyle(Color.red.opacity(0.85)) : AnyShapeStyle(.regularMaterial), in: .circle)
                             .overlay(Circle().strokeBorder(.black.opacity(0.1), lineWidth: 0.5))
                             .offset(x: 3, y: 3)
                             .transition(.scale(scale: 0.6).combined(with: .opacity))
@@ -346,9 +349,9 @@ private struct AppVolumeRow: View {
         .buttonStyle(PressScaleStyle())
         .onHover { hoveringIcon = $0 }
         .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: hoveringIcon)
-        .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: muted)
-        .accessibilityLabel("\(muted ? "Unmute" : "Mute") \(app.name)")
-        .help(muted ? "Unmute \(app.name)" : "Mute \(app.name)")
+        .animation(reduceMotion ? nil : .snappy(duration: 0.18), value: silent)
+        .accessibilityLabel("\(silent ? "Unmute" : "Mute") \(app.name)")
+        .help(silent ? "Unmute \(app.name)" : "Mute \(app.name)")
     }
 
     /// Room left for the name beside the level strip and value. Applied to every
@@ -361,7 +364,7 @@ private struct AppVolumeRow: View {
     private var labels: some View {
         HStack(spacing: 8) {
             Text(app.name).font(.system(size: 12.5, weight: .medium)).lineLimit(1)
-                .foregroundStyle(muted ? .secondary : .primary)
+                .foregroundStyle(silent ? .secondary : .primary)
                 .frame(maxWidth: Self.nameWidth, alignment: .leading)
             Spacer(minLength: 4)
             if app.error != nil {
@@ -391,7 +394,7 @@ private struct LevelGlow: View {
     var body: some View {
         GeometryReader { proxy in
             let height = proxy.size.height
-            let fill = proxy.size.width * min(1, max(0, volume))
+            let fill = VolumeSlider.fillWidth(volume, in: proxy.size.width, height: height)
             let ink = colorScheme == .dark ? tint.mix(with: .white, by: 0.45) : tint.mix(with: .white, by: 0.2)
             let glow = min(fill, max(height * 2.2, fill * 0.55))
             Rectangle()

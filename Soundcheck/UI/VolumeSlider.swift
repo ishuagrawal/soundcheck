@@ -45,6 +45,14 @@ struct VolumeSlider: NSViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
+    /// Width of the fill for a value: from one circle (as tall as the track) at 0% to
+    /// the full track, so low values read as a pill and every change moves the edge.
+    /// This is the trailing edge of the invisible knob the cell tracks with.
+    static func fillWidth(_ fraction: Double, in width: CGFloat, height: CGFloat) -> CGFloat {
+        let fraction = fraction.isFinite ? min(1, max(0, fraction)) : 0
+        return height + (width - height) * CGFloat(fraction)
+    }
+
     @MainActor final class Coordinator: NSObject {
         var parent: VolumeSlider
         init(_ parent: VolumeSlider) { self.parent = parent }
@@ -52,11 +60,10 @@ struct VolumeSlider: NSViewRepresentable {
     }
 }
 
-/// The fill is proportional: its trailing edge sits at the value's fraction of the
-/// track, so 0% is empty and 50% is half. The fill is a capsule that starts one
-/// track height before the leading edge, clipped to the track, so small values
-/// tuck into the rounded end instead of drawing a circle. The knob has no width,
-/// so tracking maps the pointer across the full track and stays on the fill edge.
+/// The knob is as wide as the track is tall and never drawn: the fill ends at its
+/// trailing edge (see `VolumeSlider.fillWidth`), so dragging moves the fill with
+/// the pointer and click-to-jump lands where you'd expect. The fill is a capsule
+/// that starts one track height before the leading edge, clipped to the track.
 private final class CapsuleSliderCell: NSSliderCell {
     var tint: NSColor = .controlAccentColor
     var isMuted = false
@@ -66,7 +73,7 @@ private final class CapsuleSliderCell: NSSliderCell {
         controlView?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
     }
 
-    override var knobThickness: CGFloat { 0 }
+    override var knobThickness: CGFloat { bounds.height }
     override func barRect(flipped: Bool) -> NSRect { bounds }
 
     override func drawBar(inside rect: NSRect, flipped: Bool) {
@@ -80,9 +87,11 @@ private final class CapsuleSliderCell: NSSliderCell {
             let edge = NSBezierPath(roundedRect: track.insetBy(dx: 0.5, dy: 0.5), xRadius: radius - 0.5, yRadius: radius - 0.5)
             edge.lineWidth = 1; edge.stroke()
         }
-        let fraction = min(1, max(0, CGFloat((doubleValue - minValue) / max(0.001, maxValue - minValue))))
-        let edge = track.minX + track.width * fraction
-        guard edge > track.minX else { return }
+        let fraction = (doubleValue - minValue) / max(0.001, maxValue - minValue)
+        // At 0% the row is shown muted: tint the whole track in the muted fill, as a
+        // muted app at full volume looks, rather than a lone circle that reads as volume.
+        let edge = isMuted && fraction < 0.005 ? track.maxX
+            : track.minX + VolumeSlider.fillWidth(fraction, in: track.width, height: track.height)
         let fill = NSRect(x: track.minX - track.height, y: track.minY, width: edge - track.minX + track.height, height: track.height)
         let alpha: CGFloat = !isEnabled ? 0.14 : (isMuted ? 0.12 : (isDark ? 0.46 : 0.3))
         NSGraphicsContext.saveGraphicsState()

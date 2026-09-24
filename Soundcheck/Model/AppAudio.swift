@@ -8,6 +8,8 @@ struct VolumePreference: Codable, Equatable, Sendable {
     var isMuted = false
     var gain: Float { isMuted ? 0 : Float(volume.isFinite ? min(1, max(0, volume)) : 1) }
     var needsProcessing: Bool { isMuted || volume < 0.9999 }
+    /// Muted, or at a volume that shows as 0%. Either way the app reads as muted.
+    var isSilent: Bool { isMuted || volume < 0.005 }
 }
 
 struct AudioSource: Equatable, Sendable {

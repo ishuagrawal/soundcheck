@@ -151,7 +151,15 @@ final class MixerModel {
         app.preference.isMuted = false
         save(app)
     }
-    func toggleMute(_ app: AppAudio) { app.preference.isMuted.toggle(); save(app) }
+    func toggleMute(_ app: AppAudio) {
+        if !app.preference.isMuted && app.preference.isSilent {
+            // Dragged to 0%, there's no earlier level to return to; 50% is audible without being loud.
+            app.preference.volume = 0.5
+        } else {
+            app.preference.isMuted.toggle()
+        }
+        save(app)
+    }
     func reset(_ app: AppAudio) { app.preference = .init(); save(app) }
     func resetAll() {
         preferences.removeAll()

@@ -54,4 +54,29 @@ final class VolumeTests: XCTestCase {
         XCTAssertFalse(second.preference.needsProcessing)
         model.stop()
     }
+
+    @MainActor func testZeroVolumeReadsAsMutedAndUnmutesToHalf() {
+        let name = "SoundcheckTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        let model = MixerModel(defaults: defaults, startImmediately: false)
+        let app = AppAudio(id: "test.zero", name: "Zero", icon: NSImage(size: .init(width: 32, height: 32)))
+        model.apps = [app]
+        model.setVolume(0, for: app)
+        XCTAssertTrue(app.preference.isSilent)
+        XCTAssertFalse(app.preference.isMuted)
+        model.toggleMute(app)
+        XCTAssertEqual(app.preference.volume, 0.5)
+        XCTAssertFalse(app.preference.isSilent)
+        model.stop()
+    }
+
+    func testFillStartsAtOneCircleAndGrowsWithEveryStep() {
+        XCTAssertEqual(VolumeSlider.fillWidth(0, in: 270, height: 30), 30)
+        XCTAssertEqual(VolumeSlider.fillWidth(0.01, in: 270, height: 30), 32.4, accuracy: 0.001)
+        XCTAssertLessThan(VolumeSlider.fillWidth(0.04, in: 270, height: 30), VolumeSlider.fillWidth(0.05, in: 270, height: 30))
+        XCTAssertEqual(VolumeSlider.fillWidth(0.5, in: 270, height: 30), 150)
+        XCTAssertEqual(VolumeSlider.fillWidth(1, in: 270, height: 30), 270)
+        XCTAssertEqual(VolumeSlider.fillWidth(.nan, in: 270, height: 30), 30)
+    }
 }
