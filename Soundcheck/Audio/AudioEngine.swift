@@ -58,18 +58,21 @@ final class AudioEngine: @unchecked Sendable {
                     for stream in formats.indices {
                         let key = "\(app.id)|\(uid)|\(stream)"
                         wanted.insert(key)
-                        // Mute and unmute stay on the same route and tap (see TapRoute), so
-                        // toggling never rebuilds anything.
-                        let muted = app.preference.isMuted
+                        // Muting a running app sets its playback route's gain to 0 and unmuting
+                        // restores it, both through the 5 ms ramp. Swapping route types on every
+                        // toggle added a second tap to a playing app, which let a burst of its
+                        // native audio through. A mute-only route is created only for a muted
+                        // app that isn't running, and replaced only once it must play again.
+                        let muteOnly = app.preference.isMuted && app.sources.isEmpty
                         // A route that no longer fits is replaced make-before-break: the old tap
                         // keeps the app's native audio muted until the new one is running.
                         var replaced: TapRoute?
-                        if let route = routes[key], route.sampleRate != formats[stream].mSampleRate || route.fault != 0 {
+                        if let route = routes[key], route.sampleRate != formats[stream].mSampleRate || route.fault != 0
+                            || (route.isMuteOnly && !app.preference.isMuted) {
                             replaced = routes.removeValue(forKey: key)
                         }
                         if let route = routes[key] {
-                            try route.update(processes: processes, bundleIDs: app.matchingBundleIDs,
-                                             gain: app.preference.gain, muted: muted)
+                            try route.update(processes: processes, bundleIDs: app.matchingBundleIDs, gain: app.preference.gain)
                         } else {
                             if let retry = failedUntil[key], retry > Date() {
                                 // Keep the old route until a retry is due rather than unmute the app.
@@ -80,7 +83,7 @@ final class AudioEngine: @unchecked Sendable {
                                 try withExtendedLifetime(replaced) {
                                     routes[key] = try TapRoute(key: key, appID: app.id, device: device, stream: stream,
                                                               processes: processes, bundleIDs: app.matchingBundleIDs,
-                                                              gain: app.preference.gain, muted: muted)
+                                                              gain: app.preference.gain, muteOnly: muteOnly)
                                 }
                                 failedUntil.removeValue(forKey: key)
                             } catch {
@@ -109,7 +112,7 @@ final class AudioEngine: @unchecked Sendable {
     }
 
     private func configureMeters(_ apps: [AppSnapshot], enabled: Bool) {
-        for route in routes.values { route.setVisualizing(enabled && !route.isMuted) }
+        for route in routes.values { route.setVisualizing(enabled && !route.isMuteOnly) }
         guard enabled else { meters.removeAll(); return }
         let controlled = Set(routes.values.map(\.appID))
         let wanted = apps.filter { !controlled.contains($0.id) && $0.sources.contains(where: \.isPlaying) }
