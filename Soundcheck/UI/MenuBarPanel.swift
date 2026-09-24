@@ -10,6 +10,7 @@ final class MenuBarPanelController: NSObject, NSWindowDelegate {
                                    styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
     private weak var button: NSStatusBarButton?
     private var outsideMonitor: Any?
+    private var lastHidden: CFTimeInterval = 0
     private var size = CGSize(width: MixerView.width, height: 400)
     private var resizeLink: CADisplayLink?
     private var resizeFrom = NSRect.zero
@@ -57,7 +58,12 @@ final class MenuBarPanelController: NSObject, NSWindowDelegate {
     private static let shadowInsets = NSEdgeInsets(top: 12, left: 24, bottom: 34, right: 24)
 
     var isVisible: Bool { panel.isVisible }
-    func toggle() { isVisible ? hide() : show() }
+    /// Clicking the status item while the panel is open first makes the panel resign
+    /// key, which hides it, and only then runs the button's action. That click closed
+    /// the panel, so it must not reopen it.
+    func toggle() {
+        if isVisible { hide() } else if CACurrentMediaTime() - lastHidden > 0.3 { show() }
+    }
 
     func show() {
         position()
@@ -85,6 +91,7 @@ final class MenuBarPanelController: NSObject, NSWindowDelegate {
     }
 
     func hide() {
+        if panel.isVisible { lastHidden = CACurrentMediaTime() }
         panel.orderOut(nil)
         button?.highlight(false)
         if let outsideMonitor { NSEvent.removeMonitor(outsideMonitor); self.outsideMonitor = nil }
