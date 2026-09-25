@@ -110,9 +110,8 @@ final class MenuBarPanelController: NSObject, NSWindowDelegate {
         position(animated: panel.isVisible && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
     }
 
-    /// Keeps the glass's top edge under the menu bar; when animated, the bottom edge
-    /// moves with the same duration and curve as the SwiftUI list change, stepped on
-    /// the display link so the in-window shadow is laid out with each frame.
+    /// Keeps the glass's top edge under the menu bar. The display link resizes the
+    /// visible panel so its in-window shadow follows the changing frame.
     private func position(animated: Bool = false) {
         guard let button, let window = button.window else { return }
         let anchor = window.convertToScreen(button.convert(button.bounds, to: nil))

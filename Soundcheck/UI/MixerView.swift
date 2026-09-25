@@ -36,13 +36,11 @@ struct MixerView: View {
         // matters when growing: without it, content taller than the window is
         // centered and the header jumps up by half the difference.
         .frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
-        .animation(motion, value: model.showAllApps)
-        .animation(motion, value: model.visibleApps.map(\.id))
         .animation(motion, value: model.isBypassed)
         .animation(motion, value: model.error)
     }
 
-    /// Shared with the panel's frame animation so the list and the window move together.
+    /// Used by the panel's frame animation and the remaining content transitions.
     static let resizeDuration = 0.3
     private var motion: Animation? { reduceMotion ? nil : .timingCurve(0.42, 0, 0.58, 1, duration: Self.resizeDuration) }
 
@@ -123,14 +121,11 @@ struct MixerView: View {
                 VStack(spacing: Self.rowSpacing) {
                     ForEach(visible) { app in
                         AppVolumeRow(app: app, model: model).frame(height: Self.rowHeight)
-                            .transition(.asymmetric(
-                                insertion: .opacity.combined(with: .offset(y: -8)).animation(motion?.delay(0.06)),
-                                removal: .opacity.animation(reduceMotion ? nil : .easeOut(duration: 0.14))))
                     }
                 }
                 .padding(.vertical, 2)
             }
-            .scrollIndicators(.automatic)
+            .scrollIndicators(visible.count > 8 ? .automatic : .hidden)
             .scrollBounceBehavior(.basedOnSize)
             .frame(height: min(content + 4, 8 * (Self.rowHeight + Self.rowSpacing)))
         }
