@@ -119,18 +119,31 @@ struct MixerView: View {
             emptyState
         } else {
             let content = CGFloat(visible.count) * (Self.rowHeight + Self.rowSpacing) - Self.rowSpacing
+            let visibleIDs = Set(visible.map(\.id))
+            let lastVisibleID = visible.last?.id
             ScrollView {
-                VStack(spacing: Self.rowSpacing) {
-                    ForEach(visible) { app in
-                        AppVolumeRow(app: app, model: model).frame(height: Self.rowHeight)
-                            .transition(.asymmetric(
-                                insertion: .opacity.combined(with: .offset(y: -8)).animation(motion?.delay(0.06)),
-                                removal: .opacity.animation(reduceMotion ? nil : .easeOut(duration: 0.14))))
+                VStack(spacing: 0) {
+                    // Keep every app's position stable and clip rows as they collapse,
+                    // so filtering cannot draw one row over another.
+                    ForEach(model.apps) { app in
+                        let shown = visibleIDs.contains(app.id)
+                        let height = shown ? Self.rowHeight + (app.id == lastVisibleID ? 0 : Self.rowSpacing) : 0
+                        ZStack(alignment: .top) {
+                            if shown {
+                                AppVolumeRow(app: app, model: model).frame(height: Self.rowHeight)
+                                    .transition(.opacity)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .frame(height: height, alignment: .top)
+                        .clipped()
+                        .allowsHitTesting(shown)
+                        .accessibilityHidden(!shown)
                     }
                 }
                 .padding(.vertical, 2)
             }
-            .scrollIndicators(.automatic)
+            .scrollIndicators(visible.count > 8 ? .automatic : .hidden)
             .scrollBounceBehavior(.basedOnSize)
             .frame(height: min(content + 4, 8 * (Self.rowHeight + Self.rowSpacing)))
         }
