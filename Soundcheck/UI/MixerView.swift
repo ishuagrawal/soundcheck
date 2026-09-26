@@ -4,6 +4,7 @@ struct MixerView: View {
     @Bindable var model: MixerModel
     var onSizeChange: (CGSize) -> Void = { _ in }
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var scrollEdges = ScrollEdges()
 
     static let width: CGFloat = 340
     static let inset: CGFloat = 16
@@ -125,15 +126,42 @@ struct MixerView: View {
                         AppVolumeRow(app: app, model: model).frame(height: Self.rowHeight)
                             .transition(.asymmetric(
                                 insertion: .opacity.combined(with: .offset(y: -8)).animation(motion?.delay(0.06)),
-                                removal: .opacity.animation(reduceMotion ? nil : .easeOut(duration: 0.14))))
+                                // Recedes rather than blinking out, and is gone before the
+                                // rows below finish closing the gap over it.
+                                removal: .opacity.combined(with: .scale(scale: 0.94)).combined(with: .blur(radius: 4))
+                                    .animation(reduceMotion ? nil : .easeOut(duration: 0.22))))
                     }
                 }
                 .padding(.vertical, 2)
             }
-            .scrollIndicators(.automatic)
+            // With "Show scroll bars: Always" (or a mouse attached) the system scroller
+            // takes width from the rows, and it flashes in while the list animates
+            // between sizes. Instead, a long list stops halfway through a row and fades
+            // the edges that have more rows beyond them.
+            .scrollIndicators(.never)
+            .onScrollGeometryChange(for: ScrollEdges.self) { geometry in
+                let hidden = geometry.contentSize.height - geometry.containerSize.height
+                return ScrollEdges(top: geometry.contentOffset.y > 1, bottom: geometry.contentOffset.y < hidden - 1)
+            } action: { _, edges in scrollEdges = edges }
+            .mask(edgeFade)
             .scrollBounceBehavior(.basedOnSize)
-            .frame(height: min(content + 4, 8 * (Self.rowHeight + Self.rowSpacing)))
+            .frame(height: min(content + 4, 8.5 * (Self.rowHeight + Self.rowSpacing)))
         }
+    }
+
+    private var edgeFade: some View {
+        // One gradient rather than stacked pieces: while the list resizes, the seams
+        // between pieces land on fractional pixels and show as a faint line.
+        GeometryReader { proxy in
+            let fade = min(0.5, 22 / max(1, proxy.size.height))
+            LinearGradient(stops: [
+                .init(color: .black.opacity(scrollEdges.top ? 0 : 1), location: 0),
+                .init(color: .black, location: fade),
+                .init(color: .black, location: 1 - fade),
+                .init(color: .black.opacity(scrollEdges.bottom ? 0 : 1), location: 1),
+            ], startPoint: .top, endPoint: .bottom)
+        }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.15), value: scrollEdges)
     }
 
     private var emptyState: some View {
@@ -486,5 +514,21 @@ private struct PressScaleStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.9 : 1)
             .animation(.snappy(duration: 0.14), value: configuration.isPressed)
+    }
+}
+
+private struct ScrollEdges: Equatable {
+    var top = false
+    var bottom = false
+}
+
+private struct Blurred: ViewModifier {
+    let radius: CGFloat
+    func body(content: Content) -> some View { content.blur(radius: radius) }
+}
+
+private extension AnyTransition {
+    static func blur(radius: CGFloat) -> AnyTransition {
+        .modifier(active: Blurred(radius: radius), identity: Blurred(radius: 0))
     }
 }
